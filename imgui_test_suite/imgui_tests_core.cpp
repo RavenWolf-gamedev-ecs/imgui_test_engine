@@ -4502,7 +4502,7 @@ void RegisterTests_Fonts(ImGuiTestEngine* e)
             ui_ctx[n]->IO.DisplaySize = ImVec2(900, 900);
             ImGui::NewFrame();
         }
-        for (int n = 0; n < 3; n++)
+        for (int n = 2; n >= 0; n--)
         {
             ImGui::SetCurrentContext(ui_ctx[n]);
             ImGui::DestroyContext();
