@@ -5474,7 +5474,13 @@ void RegisterTests_Widgets(ImGuiTestEngine* e)
         ImGuiWindow* child_window = ctx->WindowInfo("Assets").Window;
         IM_CHECK(child_window != NULL);
 
-        ctx->WindowResize("", ImVec2(870, 600)); // FIXME: Calculated for 15 item wide (15 * 40) + (15-1+2) * 10 + Parent/Child Padding + Scrollbar
+        const float ICON_SIZE = 40.0f;
+        const float ICON_SPACING = 10.0f;
+
+        ImVec2 window_size;
+        window_size.x = (16 * ICON_SIZE) + (17 * ICON_SPACING) + ImGui::GetStyle().WindowPadding.x * 4.0f + ImGui::GetStyle().ScrollbarSize;
+        window_size.y = (600);
+        ctx->WindowResize("", window_size);
         ctx->MenuClick("File/Clear items");
         ctx->MenuClick("File/Add 10000 items");
 
@@ -5492,8 +5498,8 @@ void RegisterTests_Widgets(ImGuiTestEngine* e)
         // Set specific option
         ctx->SetRef("Example: Assets Browser");
         ctx->MenuAction(ImGuiTestAction_Open, "Options");
-        ctx->ItemInputValue("//$FOCUSED/Icon Size", 40.0f);
-        ctx->ItemInputValue("//$FOCUSED/Icon Spacing", 10);
+        ctx->ItemInputValue("//$FOCUSED/Icon Size", ICON_SIZE);
+        ctx->ItemInputValue("//$FOCUSED/Icon Spacing", ICON_SPACING);
         ctx->ItemInputValue("//$FOCUSED/Icon Hit Spacing", 2);
 
         ctx->SetRef(child_window);
@@ -6184,7 +6190,9 @@ void RegisterTests_Widgets(ImGuiTestEngine* e)
         ImGuiTestGenericVars& vars = ctx->GenericVars;
         ImGui::Begin("Test Window", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize);
         ImGui::SetNextItemWidth(400);
+        ImGui::PushStyleVar(ImGuiStyleVar_GrabMinSize, 20.0f);
         ImGui::SliderFloat("slider", &vars.Float1, -10.0f, 10.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+        ImGui::PopStyleVar();
         ImGui::Text("%.4f", vars.Float1);
         ImGui::End();
     };
@@ -6212,8 +6220,8 @@ void RegisterTests_Widgets(ImGuiTestEngine* e)
             for (int i = 0; i < IM_COUNTOF(x_offset); i++)
             {
                 ctx->ItemDragWithDelta("slider", ImVec2(sign * x_offset[i], 0.f));
-                IM_CHECK_GT(vars.Float1, sign * slider_v[i] - (slider_v[i] * 0.15f));  // FIXME-TESTS: Exact values actually depends on GrabSize.
-                IM_CHECK_LT(vars.Float1, sign * slider_v[i] + (slider_v[i] * 0.15f));
+                IM_CHECK_GT(vars.Float1, sign * slider_v[i] - (slider_v[i] * 0.20f));  // FIXME-TESTS: Exact values actually depends on GrabSize, hence the PushStyleVar() above.
+                IM_CHECK_LT(vars.Float1, sign * slider_v[i] + (slider_v[i] * 0.20f));
             }
     };
 

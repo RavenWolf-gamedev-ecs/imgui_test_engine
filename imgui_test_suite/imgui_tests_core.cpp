@@ -4914,25 +4914,16 @@ void RegisterTests_Misc(ImGuiTestEngine* e)
     // ## Test ImGuiListClipper basic behavior
     // ## Test ImGuiListClipper with table frozen rows
     t = IM_REGISTER_TEST(e, "misc", "misc_clipper");
-    struct ClipperTestVars { ImGuiWindow* WindowOut = NULL; float WindowHeightInItems = 10.0f; int ItemsIn = 100; int ItemsOut = 0; int ForceDisplayStart = 0, ForceDisplayEnd = 0; float OffsetY = 0.0f; ImBitVector ItemsOutMask; bool ClipperManualItemHeight = true; bool ClipperUnknownItemsCount = false; bool TableEnable = false; int TableFreezeRows = 0; };
+    struct ClipperTestVars { ImGuiWindow* WindowOut = NULL; float WindowHeightInItems = 10.0f; int ItemsIn = 100; int ItemsOut = 0; int ForceDisplayStart = 0, ForceDisplayEnd = 0; float OffsetY1 = 0.0f; float OffsetY2 = 0.0f; ImBitVector ItemsOutMask; bool ClipperManualItemHeight = true; bool ClipperUnknownItemsCount = false; bool TableEnable = false; int TableFreezeRows = 0; };
     t->SetVarsDataType<ClipperTestVars>();
     auto ClipperGuiFunc = [](ImGuiTestContext* ctx)
     {
         auto& vars = ctx->GetVars<ClipperTestVars>();
 
-        if (ctx->IsGuiFuncOnly())
-        {
-            ImGui::Begin("Config", NULL, ImGuiWindowFlags_NoSavedSettings);
-            ImGui::SliderInt("ItemsIn", &vars.ItemsIn, 0, 200);
-            ImGui::Checkbox("TableEnable", &vars.TableEnable);
-            ImGui::SliderInt("TableFreezeRows", &vars.TableFreezeRows, 0, 3);
-            ImGui::Checkbox("ClipperManualItemHeight", &vars.ClipperManualItemHeight);
-            ImGui::Checkbox("ClipperUnknownItemsCount", &vars.ClipperUnknownItemsCount);
-            ImGui::End();
-        }
+        const float expected_item_height = ImGui::GetTextLineHeight() + (vars.TableEnable ? ImGui::GetStyle().CellPadding.y * 2.0f : ImGui::GetStyle().ItemSpacing.y);
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0)); // Simpler to use remove padding and decoration
-        ImGui::SetNextWindowSize(ImVec2(300, ImGui::GetTextLineHeightWithSpacing()* vars.WindowHeightInItems));
+        ImGui::SetNextWindowSize(ImVec2(300, expected_item_height * vars.WindowHeightInItems));
         ImGui::Begin("Test Window", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings);
 
         bool open = true;
@@ -4950,6 +4941,8 @@ void RegisterTests_Misc(ImGuiTestEngine* e)
             vars.ItemsOutMask.Create(vars.ItemsIn);
 
             float start_y = ImGui::GetCursorScreenPos().y;
+            vars.OffsetY1 = ImGui::GetCursorScreenPos().y - start_y;
+
             int items_count_passed_to_clipper = vars.ItemsIn;
 #if IMGUI_VERSION_NUM >= 19095
             if (vars.ClipperUnknownItemsCount)
@@ -4957,7 +4950,7 @@ void RegisterTests_Misc(ImGuiTestEngine* e)
 #endif
             ImGuiListClipper clipper;
             if (vars.ClipperManualItemHeight)
-                clipper.Begin(items_count_passed_to_clipper, ImGui::GetTextLineHeightWithSpacing());
+                clipper.Begin(items_count_passed_to_clipper, expected_item_height);
             else
                 clipper.Begin(items_count_passed_to_clipper);
 #if IMGUI_VERSION_NUM >= 18984
@@ -4982,7 +4975,7 @@ void RegisterTests_Misc(ImGuiTestEngine* e)
                     vars.ItemsOutMask.SetBit(n);
                 }
             }
-            vars.OffsetY = ImGui::GetCursorScreenPos().y - start_y;
+            vars.OffsetY2 = ImGui::GetCursorScreenPos().y - start_y;
 
             clipper.End(); // Extraneous call
 #if IMGUI_VERSION_NUM >= 19095
@@ -4995,12 +4988,30 @@ void RegisterTests_Misc(ImGuiTestEngine* e)
         }
         ImGui::End();
         ImGui::PopStyleVar();
+
+
+        if (ctx->IsGuiFuncOnly())
+        {
+            ImGui::Begin("Config", NULL, ImGuiWindowFlags_NoSavedSettings);
+            ImGui::SliderInt("ItemsIn", &vars.ItemsIn, 0, 200);
+            ImGui::Text("ItemHeight = %f", expected_item_height);
+            ImGui::Checkbox("TableEnable", &vars.TableEnable);
+            ImGui::SliderInt("TableFreezeRows", &vars.TableFreezeRows, 0, 3);
+            ImGui::Checkbox("ClipperManualItemHeight", &vars.ClipperManualItemHeight);
+            ImGui::Checkbox("ClipperUnknownItemsCount", &vars.ClipperUnknownItemsCount);
+            ImGui::DragFloat("WindowHeightInItems", &vars.WindowHeightInItems, 1.0f, 1.0f, 100.0f, "%.1f");
+
+            ImGui::SeparatorText("Output");
+            ImGui::Text("OffsetY1/Y2 = %f -> %f", vars.OffsetY1, vars.OffsetY2);
+
+            ImGui::End();
+        }
     };
     t->GuiFunc = ClipperGuiFunc;
     t->TestFunc = [](ImGuiTestContext* ctx)
     {
         auto& vars = ctx->GetVars<ClipperTestVars>();
-        float item_height = ImGui::GetTextLineHeightWithSpacing(); // EXPECTED item height
+        //float item_height = ImGui::GetTextLineHeightWithSpacing(); // EXPECTED item height
 
         int contents_step_count = 5;
         for (int clipper_step = 0; clipper_step < 3; clipper_step++)
@@ -5023,6 +5034,7 @@ void RegisterTests_Misc(ImGuiTestEngine* e)
                 }
 #endif
                 ctx->LogInfo("## Step %d-%d, Table=%d, TableFreezeRows=%d, ClipperManualItemHeight=%d UnknownItemsCount=%d", clipper_step, contents_step, vars.TableEnable, vars.TableFreezeRows, vars.ClipperManualItemHeight, vars.ClipperUnknownItemsCount);
+                const float item_height = ImGui::GetTextLineHeight() + (vars.TableEnable ? ImGui::GetStyle().CellPadding.y * 2.0f : ImGui::GetStyle().ItemSpacing.y);
 
                 ctx->Yield();
                 ctx->Yield();
@@ -5034,7 +5046,7 @@ void RegisterTests_Misc(ImGuiTestEngine* e)
                 vars.ItemsIn = 100;
                 ctx->ScrollToTop("");
                 ctx->Yield();
-                IM_CHECK_EQ(vars.OffsetY, vars.ItemsIn * item_height);
+                IM_CHECK_EQ(vars.OffsetY2, vars.ItemsIn * item_height);
                 IM_CHECK_EQ(vars.ItemsOut, 10 + extra_forced_items);
 #if IMGUI_VERSION_NUM >= 18509
                 if (extra_forced_items > 0)
@@ -5048,7 +5060,7 @@ void RegisterTests_Misc(ImGuiTestEngine* e)
                 vars.WindowHeightInItems = 10.5f;
                 vars.ItemsIn = 100;
                 ctx->Yield();
-                IM_CHECK_EQ(vars.OffsetY, vars.ItemsIn * item_height);
+                IM_CHECK_EQ(vars.OffsetY2, vars.ItemsIn * item_height);
                 IM_CHECK_EQ(vars.ItemsOut, 11 + extra_forced_items);
 
                 // Test rendering 0 + trailing items (window scrolled one page down)
@@ -5058,7 +5070,7 @@ void RegisterTests_Misc(ImGuiTestEngine* e)
                 ctx->Yield();
                 ctx->KeyPress(ImGuiKey_PageDown);
                 ctx->Yield();
-                IM_CHECK_EQ(vars.OffsetY, vars.ItemsIn * item_height);
+                IM_CHECK_EQ(vars.OffsetY2, vars.ItemsIn * item_height);
                 if (vars.ClipperManualItemHeight)
                     IM_CHECK_EQ(vars.ItemsOut, 10);
                 else
@@ -5070,7 +5082,7 @@ void RegisterTests_Misc(ImGuiTestEngine* e)
 
                 // Scroll to bottom
                 ctx->ScrollToBottom("");
-                IM_CHECK_EQ(vars.OffsetY, vars.ItemsIn * item_height);
+                IM_CHECK_EQ(vars.OffsetY2, vars.ItemsIn * item_height);
 #if IMGUI_VERSION_NUM >= 18505
                 const int extra_at_top_of_visibility_line = vars.TableEnable ? 0 : 1; // Slight artifact of our size/alignment, item 89 is flagged as visible
 #else
@@ -5103,14 +5115,14 @@ void RegisterTests_Misc(ImGuiTestEngine* e)
                 vars.ItemsIn = 1;
                 ctx->Yield();
                 ctx->Yield();
-                IM_CHECK_EQ(vars.OffsetY, vars.ItemsIn * item_height);
+                IM_CHECK_EQ(vars.OffsetY2, vars.ItemsIn * item_height);
                 IM_CHECK_EQ(vars.ItemsOut, 1);
                 IM_CHECK_EQ(vars.ItemsOutMask.TestBit(0), true);
 
                 // Test some edges cases
                 vars.ItemsIn = 0;
                 ctx->Yield();
-                IM_CHECK_EQ(vars.OffsetY, vars.ItemsIn * item_height);
+                IM_CHECK_EQ(vars.OffsetY2, vars.ItemsIn * item_height);
                 IM_CHECK_EQ(vars.ItemsOut, 0);
             }
     };
@@ -5212,8 +5224,8 @@ void RegisterTests_Misc(ImGuiTestEngine* e)
                     ImGui::Button(Str30f("Section %d Button %d", section_n, item_n).c_str(), ImVec2(-FLT_MIN, 0.0f));
             }
 
-            vars.OffsetY = ImGui::GetCursorScreenPos().y - start_y;
-            IM_CHECK_EQ(vars.OffsetY, ImGui::GetFrameHeightWithSpacing() * item_count);
+            vars.OffsetY2 = ImGui::GetCursorScreenPos().y - start_y;
+            IM_CHECK_EQ(vars.OffsetY2, ImGui::GetFrameHeightWithSpacing() * item_count);
 
             ImGui::Text("End");
             ImGui::Separator();

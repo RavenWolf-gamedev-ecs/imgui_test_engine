@@ -4719,7 +4719,7 @@ void RegisterTests_Columns(ImGuiTestEngine* e)
     {
         auto& vars = ctx->GetVars<ColumnsTestingVars>();
 
-        ImGui::SetNextWindowSize(ImVec2(300.0f, 60.0f), ImGuiCond_Appearing);
+        ImGui::SetNextWindowSize(ImVec2(300.0f, 100.0f), ImGuiCond_Appearing);
         ImGui::Begin("Test window", NULL, ImGuiWindowFlags_NoSavedSettings);
         vars.ColumnsID = ImGui::GetColumnsID("Legacy Columns", 5);
         ImGui::BeginColumns("Legacy Columns", 5, vars.Flags);
